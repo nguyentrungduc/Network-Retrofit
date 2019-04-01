@@ -418,3 +418,4 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
 - Các phần của multiparts sử dụng một trong các bộ chuyển đổi của Retrofit hoặc chúng có thể implement RequestBody để xử lý serialization của riêng chúng.
 
 
+
