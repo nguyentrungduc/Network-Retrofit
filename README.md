@@ -283,3 +283,63 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
                             }
                         }
                     }
+
+### Timeouts 
+- Sử dụng timeout để ko thực hiện request khi ko thể truy cập đc, phân vung mạng có thể là do sự cố kết nối với cline hay server hay cái gì đó...
+
+                    private final OkHttpClient client;
+
+                      public ConfigureTimeouts() throws Exception {
+                        client = new OkHttpClient.Builder()
+                            .connectTimeout(10, TimeUnit.SECONDS)
+                            .writeTimeout(10, TimeUnit.SECONDS)
+                            .readTimeout(30, TimeUnit.SECONDS)
+                            .build();
+                      }
+
+                      public void run() throws Exception {
+                        Request request = new Request.Builder()
+                            .url("http://httpbin.org/delay/2") // This URL is served with a 2 second delay.
+                            .build();
+
+                        try (Response response = client.newCall(request).execute()) {
+                          System.out.println("Response completed: " + response);
+                        }
+                      }
+                      
+  ### Handling authentication
+  - OKHttp có thể tự dộng thử lại các request ko đc xác thực. Khi một response là 401 Not Authorized, 1 Authenticator đc yêu cầu cung cấp thông tin đăng nhập, việc triển khai nên đc xây dựng một request mới bao gồm các thông tin còn thiếu. Nếu không có thông tin xác thực return null để thử lại 
+  - Sử dụng Response.challenge để nhận các schemes và realms của bất kỳ authentication challenges. 
+  
+                     private final OkHttpClient client;
+
+                      public Authenticate() {
+                        client = new OkHttpClient.Builder()
+                            .authenticator(new Authenticator() {
+                              @Override public Request authenticate(Route route, Response response) throws IOException {
+                                if (response.request().header("Authorization") != null) {
+                                  return null; // Give up, we've already attempted to authenticate.
+                                }
+
+                                System.out.println("Authenticating for response: " + response);
+                                System.out.println("Challenges: " + response.challenges());
+                                String credential = Credentials.basic("jesse", "password1");
+                                return response.request().newBuilder()
+                                    .header("Authorization", credential)
+                                    .build();
+                              }
+                            })
+                            .build();
+                      }
+
+                      public void run() throws Exception {
+                        Request request = new Request.Builder()
+                            .url("http://publicobject.com/secrets/hellosecret.txt")
+                            .build();
+
+                        try (Response response = client.newCall(request).execute()) {
+                          if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+                          System.out.println(response.body().string());
+                        }
+                      }
