@@ -1,8 +1,10 @@
 package com.example.retrofit
 
+import android.arch.lifecycle.ViewModelProviders
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import com.past3.ketro.api.Kobserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import okhttp3.*
@@ -13,6 +15,10 @@ import java.io.IOException
 
 
 class MainActivity : AppCompatActivity() {
+
+    private val viewModel by lazy {
+        ViewModelProviders.of(this).get(MainViewModel::class.java)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,11 +45,18 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         client.newCall(request).enqueue(object:  Callback {
+            override fun onResponse(call: Call, response: okhttp3.Response) {
+            }
+
             override fun onFailure(call: Call, e: IOException) {
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                Log.d("hi", response.toString())
+
+        })
+
+        viewModel.searchUser("ntduc").observe(this, object : Kobserver<Response>() {
+            override fun onSuccess(data: Response) {
+                Log.d("hh", data.toString())
             }
 
         })
