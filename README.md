@@ -1,4 +1,8 @@
 # Network-Retrofit
+## Restful API
+RESTful API là một tiêu chuẩn dùng trong việc thết kế các thiết kế API cho các ứng dụng web để quản lý các resource. RESTful là một trong những kiểu thiết kế API được sử dụng phổ biến nhất ngày nay.
+Trọng tâm của REST quy định cách sử dụng các HTTP method (như GET, POST, PUT, DELETE...) và cách định dạng các URL cho ứng dụng web để quản các resource
+
 ## OkHttp
 ### Overview
 - OkHttp là một third-party library được phát triển bài Square cho mục đích gửi và nhận HTTP-based network requests. Nó được xây dựng dựa trên Okio, nơi cố gắng hiệu quả hơn về đọc và ghi dữ liệu so với các thư viện I/O Java tiêu chuẩn bằng cách tạo một 
@@ -343,3 +347,74 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
                           System.out.println(response.body().string());
                         }
                       }
+                      
+  ### SSL Configuration
+  - Theo 
+  
+## Retrofit
+- Retrofit là một Rest Client cho Android và Java và được tạo ra bởi Square. Retrofit giúp dễ dàng kết nối đến một dịch vụ REST trên web bằng cách chyển đổi API thành Java Interface. 
+- Thư viện mạnh mẽ này giúp bạn dễ dàng xử lý dữ liệu JSON hoặc XML sau đó phân tích cú pháp thành Plain Old Java Objects (POJOs). Tất cả các yêu cầu GET, POST, PUT, PATCH, và DELETE đều có thể được thực thi.
+- Giống như hầu hết các phần mềm mã nguồn mở khác, Retrofit được xây dựng dựa trên một số thư viện mạnh mẽ và công cụ khác. Đằng sau nó, Retrofit làm cho việc sử dụng OkHttp để xử lý các yêu cầu trên mạng. Ngoài ra, từ Retrofit2 không tích hợp bất kỳ một bộ chuyển đổi JSON nào để phân tích từ JSON thành các đối tượng Java. Thay vào đó nó đi kèm với các thư viện chuyển đổi JSON sau đây để xử lý điều đó:
+- Gson: com.squareup.retrofit:converter-gson
+- Jackson: com.squareup.retrofit:converter-jackson
+- Moshi: com.squareup.retrofit:converter-moshi
+## Guide
+- Sử dụng Annotations để mô tả yêu cầu HTTP:
+= Hỗ trợ tham số URL và tham số truy vấn
+- Chuyển đổi đối tượng để yêu cầu nội dung
+- Multipart request body và file upload
+
+                    public interface GitHubService {
+                      @GET("users/{user}/repos")
+                      Call<List<Repo>> listRepos(@Path("user") String user);
+                    }
+### Request Method
+- Mỗi phương thức phải có Annotation HTTP cung cấp request method và URL. Có năm Annotation được tích hợp sẵn: @GET, @POST, @PUT, @DELETE và @HEAD URL tương đối của tài nguyên được chỉ định trong Annotation.
+
+- @GET("users/list")
+
+- Bạn cũng có thể chỉ định tham số truy vấn trong URL.
+
+                    @GET("users/list?sort=desc")
+
+### URL MANIPULATION
+- URL request có thể được cập nhật tự động bằng cách sử dụng các khối thay thế và tham số trên phương thức.
+- Chúng ta có thể sử dụng URL 1 cách động dựa vào biến truyền vào, bằng cách sử dụng anotation @Path
+
+                    @GET("group/{id}/users")
+                    Call<List<User>> groupList(@Path("id") int groupId);
+
+- Chúng ta có thể nối thêm paramater vào sau URL bằng cách sử dụng @Query
+                    
+                    @GET("group/{id}/users")
+                    Call<List<User>> groupList(@Path("id") int groupId, @Query("sort") String sort);
+                    
+- Đối với các kết hợp tham số truy vấn phức tạp, có thể sử dụng @QueryMap.
+                    
+                    @GET("group/{id}/users")
+                    Call<List<User>> groupList(@Path("id") int groupId, @QueryMap Map<String, String> options);
+                    
+### Request Body
+- Một đối tượng có thể được chỉ định để sử dụng làm phần thân yêu cầu HTTP với Annotation @Body.
+
+                    @POST("users/new")
+                    Call<User> createUser(@Body User user);
+                    
+- Đối tượng cũng sẽ được chuyển đổi bằng cách sử dụng Converter được chỉ định trên instance của Retrofit. Nếu không có Converter nào được thêm vào, chỉ có thể sử dụng RequestBody.
+
+### FORM ENCODED AND MULTIPART 
+- Các phương thức cũng có thể được khai báo để gửi dữ liệu được mã hóa và dữ liệu multipart(nhiều phần). Dữ liệu được mã hóa theo form được gửi khi @FormUrlEncoded được chỉ định trên phương thức. Mỗi cặp key-value được chú thích bằng @Field chứa tên và đối tượng cung cấp giá trị.
+
+                    @FormUrlEncoded
+                    @POST("user/edit")
+                    Call<User> updateUser(@Field("first_name") String first, @Field("last_name") String last);
+
+- Các yêu cầu multipart được sử dụng khi @Multipart xuất hiện trên phương thức. Các phần được khai báo bằng cách sử dụng @Part
+
+                    @Multipart
+                    @PUT("user/photo")
+                    Call<User> updateUser(@Part("photo") RequestBody photo, @Part("description") RequestBody description);
+                    
+- Các phần của multiparts sử dụng một trong các bộ chuyển đổi của Retrofit hoặc chúng có thể implement RequestBody để xử lý serialization của riêng chúng.
+
+
