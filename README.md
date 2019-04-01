@@ -164,7 +164,122 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
       
           .cacheControl(new CacheControl.Builder().noCache().build())        
           
-- 
+- Để nhận response trong bộ nhớ cache, ta chỉ cần gọi cacheResponse() trong Response :
+
+                    Call call = client.newCall(request);
+                    call.enqueue(new Callback() {
+                      @Override
+                      public void onFailure(Call call, IOException e) {
+
+                      }
+
+                      @Override
+                      public void onResponse(Call call, final Response response) throws IOException
+                      {
+                         final Response text = response.cacheResponse();
+                         // if no cached object, result will be null
+                         if (text != null) {
+                            Log.d("here", text.toString());
+                         }
+                      }
+                    });       
+                    
+### Troubleshooting
+- OkHttp có thể khó khắc phục sự cố khi cố gắng bước qua các lớp trừu tượng khác nhau trong các thư viện. Bạn có thể thêm HTTPLogInterceptor có thể được thêm khi sử dụng thư viện OkHttp3, nơi sẽ hiện các request/response HTTP thông qua Log. Ta cũng có thể tận dụng Stetho của Facebook để sử dụng Chrome để kiểm tra tất cả lưu lượng truy cập mạng.
+
+### HttpLogInterceptor
+- Để sử dụng HttpLogInterceptor, add dependency
+
+                    implementation 'com.squareup.okhttp3:logging-interceptor:3.6.0'
+                    
+- Sẽ cần thêm network interceptor cho HttpLogInterceptor.
+
+                    OkHttpClient.Builder builder = new OkHttpClient.Builder();
+                    HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor();
+
+                    // Can be Level.BASIC, Level.HEADERS, or Level.BODY
+                    // See http://square.github.io/okhttp/3.x/logging-interceptor/ to see the options.
+                    httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+                    builder.networkInterceptors().add(httpLoggingInterceptor);
+                    builder.build();
+                    
+### Stetho
  
+ - Sử dụng plugin Stetho của Facebook để theo dõi các request vs chrome 
+ - Add dependecy
+                    dependencies { 
+                        implementation 'com.facebook.stetho:stetho-okhttp3:1.3.0' 
+                    } 
+                    
+                    OkHttpClient client = new OkHttpClient.Builder()
+                        .addNetworkInterceptor(new StethoInterceptor())
+                        .build();
+                        
+- Init in Application 
+                   
+                   public class MyApplication extends Application {
+                      public void onCreate() {
+                        super.onCreate();
+                        Stetho.initializeWithDefaults(this);
+                      }
+                    }
+                    
+### Using with Websockets
+- Với Okhttp v3.5 bao gồm hỗ trợ cho web socket 2 chiều. Url nên được sử dụng phải đc thêm tiền tố vào ws:// hoặc wss:// cho phiên bản bảo mật. Mặc dù các cổng kết nối giống như HTTP (cổng 80 và cổng 443), máy chủ vẫn đc cấu hình để hỗ trợ WebSockets vì chúng là một giao thức hoàn toàn khác nhau                                                
                                
-                               
+                    Request request = new Request.Builder().url(url).build();
+                    WebSocket webSocket = client.newWebSocket(request,  = new WebSocketListener() {
+
+                      @Override
+                      public void onOpen(WebSocket webSocket, Response response) {
+                         // connection succeeded
+                      }
+
+                      @Override
+                      public void onMessage(WebSocket webSocket, String text) {
+                         // text message received
+                      }
+
+                      @Override
+                      public void onMessage(WebSocket webSocket, ByteString bytes) {
+                         // binary message received
+                      }
+
+                      @Override
+                      public void onClosed(WebSocket webSocket, int code, String reason) {
+                         // no more messages and the connection should be released
+                      }
+
+                      @Override
+                      public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                         // unexpected error 
+                      });
+                      
+- Send message 
+
+                    websocket.send("hello");
+                    
+- OkHttp xử lý tất cả công việc trên worker thread, vì vậy bạn không phải lo lắng về việc thực hiện các cuộc gọi Websocket trên main thread 
+
+-Nếu bạn cần đóng kết nối đúng cách, hãy đảm bảo sử dụng status code =  1000. 
+
+### Enabling TLS V1.2 on older devices
+- Nếu thấy SSL handshake terminated và sử dụng các thiết bị Android 4.0, ta cần bật TLS v1.2 một cách rõ ràng. Android đã hỗ trợ TLS 1.2 kể từ API 16 (Android 4.1). phải đảm bảo rằng bạn đang sử dụng OpenSSL mới nhất bằng cách sử dụng CarrierInstaller
+
+                    public class MyApplication extends Application {
+                        @Override
+                        public void onCreate() {
+                            super.onCreate();
+                            try {
+                              // Google Play will install latest OpenSSL 
+                              ProviderInstaller.installIfNeeded(getApplicationContext());
+                              SSLContext sslContext;
+                              sslContext = SSLContext.getInstance("TLSv1.2");
+                              sslContext.init(null, null, null);
+                              sslContext.createSSLEngine();
+                            } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException
+                                | NoSuchAlgorithmException | KeyManagementException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
