@@ -186,7 +186,22 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
                             Log.d("here", text.toString());
                          }
                       }
-                    });       
+                    });  
+                    
+- Ta có thể chỉ nhận ở local cache, luôn get từ store data bằng CacheControl.FORCE_CACHE
+
+          public class ForceCacheInterceptor implements Interceptor {
+              @Override
+              public Response intercept(Chain chain) throws IOException {
+                  Request.Builder builder = chain.request().newBuilder();
+                  if (!NetworkUtils.internetAvailable()) {
+                      builder.cacheControl(CacheControl.FORCE_CACHE);
+                  }
+
+                  return chain.proceed(builder.build());
+              }
+          }
+          okHttpClient.addInterceptor(new ForceCacheInterceptor());
                     
 ### Troubleshooting
 - OkHttp có thể khó khắc phục sự cố khi cố gắng bước qua các lớp trừu tượng khác nhau trong các thư viện. Bạn có thể thêm HTTPLogInterceptor có thể được thêm khi sử dụng thư viện OkHttp3, nơi sẽ hiện các request/response HTTP thông qua Log. Ta cũng có thể tận dụng Stetho của Facebook để sử dụng Chrome để kiểm tra tất cả lưu lượng truy cập mạng.
