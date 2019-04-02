@@ -192,6 +192,32 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
 - OkHttp có thể khó khắc phục sự cố khi cố gắng bước qua các lớp trừu tượng khác nhau trong các thư viện. Bạn có thể thêm HTTPLogInterceptor có thể được thêm khi sử dụng thư viện OkHttp3, nơi sẽ hiện các request/response HTTP thông qua Log. Ta cũng có thể tận dụng Stetho của Facebook để sử dụng Chrome để kiểm tra tất cả lưu lượng truy cập mạng.
 
 ### HttpLogInterceptor
+
+#### Interceptors
+- Interceptor là một cơ chế mạnh mẽ để giám sát, viết lại và thử các request, đây là công cụ đơn giản ghi lại request gửi đi và response đến
+
+                    class LoggingInterceptor implements Interceptor {
+                      @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+                        Request request = chain.request();
+
+                        long t1 = System.nanoTime();
+                        logger.info(String.format("Sending request %s on %s%n%s",
+                            request.url(), chain.connection(), request.headers()));
+
+                        Response response = chain.proceed(request);
+
+                        long t2 = System.nanoTime();
+                        logger.info(String.format("Received response for %s in %.1fms%n%s",
+                            response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+
+                        return response;
+                      }
+                    }
+                    
+- Một cuộc gọi đến chain.proceed(request) là một phần quan trọng trong mỗi lần thực hiện interceptor. Phương thức tìm kiếm đơn giản này là nơi tất cả các công việc HTTP sảy ra, tạo response để đáp ứng request
+- Interceptor can be chained. Giả sử ta có cả compressing interceptor và checksumming interceptor, ta sẽ cần phải quyết định xem dữ liệu có đc nén và sau đó kiểm tra lại hay kiểm tra sau đó đc nén. OKHttp sử dụng danh sách để theo dõi các thiết bị chặn và các thiết bị chặn đc gọi theo thứ tự
+
+
 - Để sử dụng HttpLogInterceptor, add dependency
 
                     implementation 'com.squareup.okhttp3:logging-interceptor:3.6.0'
@@ -206,6 +232,28 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
                     httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
                     builder.networkInterceptors().add(httpLoggingInterceptor);
                     builder.build();
+                    
+- Khi gọi request: 
+                    
+                Request request = new Request.Builder()
+              .url("http://www.publicobject.com/helloworld.txt")
+              .header("User-Agent", "OkHttp Example")
+              .build();
+
+          Response response = client.newCall(request).execute();
+          response.body().close();    
+
+- url http://www.publicobject.com/helloworld.txt sẽ đc direct sang https://publicobject.com/helloworld.txt, và Interceptor sẽ đc gọi và response trả về từ chain.proceed() có response chuyển hướng :
+
+          INFO: Sending request http://www.publicobject.com/helloworld.txt on null
+          User-Agent: OkHttp Example
+
+          INFO: Received response for https://publicobject.com/helloworld.txt in 1179.7ms
+          Server: nginx/1.4.6 (Ubuntu)
+          Content-Type: text/plain
+          Content-Length: 1759
+          Connection: keep-alive  
+          
                     
 ### Stetho
  
