@@ -202,9 +202,45 @@ shared memory pool. Đây cũng là thư viện cơ bản cho thư viện Retrof
               }
           }
           okHttpClient.addInterceptor(new ForceCacheInterceptor());
+          
+- Nếu luôn lấy từ network call CacheControl.FORCE_NETWORK -> Chú ý rằng khi sử dụng CacheControl.FORCE_CACHE nếu ko có trong
+store -> yêu cầu network -> trả về error code 504 Unsatifiable 
                     
 ### Troubleshooting
 - OkHttp có thể khó khắc phục sự cố khi cố gắng bước qua các lớp trừu tượng khác nhau trong các thư viện. Bạn có thể thêm HTTPLogInterceptor có thể được thêm khi sử dụng thư viện OkHttp3, nơi sẽ hiện các request/response HTTP thông qua Log. Ta cũng có thể tận dụng Stetho của Facebook để sử dụng Chrome để kiểm tra tất cả lưu lượng truy cập mạng.
+
+### Cancel a Call 
+- Sử dụng Call.cancel() để dừng request đang diễn ra ngay lập tức. Nếu thread hiện đang viết request hoặc đọc response, nó sẽ nhận 1 IOException. Sử dụng điều này để bảo tồn mạng khi cuộc gọi không còn cần thiết; ví dụ: khi người dùng của bạn điều hướng khỏi một ứng dụng. Cả hai cuộc gọi đồng bộ và không đồng bộ có thể bị hủy.
+
+                    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+                      private final OkHttpClient client = new OkHttpClient();
+
+                      public void run() throws Exception {
+                        Request request = new Request.Builder()
+                            .url("http://httpbin.org/delay/2") // This URL is served with a 2 second delay.
+                            .build();
+
+                        final long startNanos = System.nanoTime();
+                        final Call call = client.newCall(request);
+
+                        // Schedule a job to cancel the call in 1 second.
+                        executor.schedule(new Runnable() {
+                          @Override public void run() {
+                            System.out.printf("%.2f Canceling call.%n", (System.nanoTime() - startNanos) / 1e9f);
+                            call.cancel();
+                            System.out.printf("%.2f Canceled call.%n", (System.nanoTime() - startNanos) / 1e9f);
+                          }
+                        }, 1, TimeUnit.SECONDS);
+
+                        System.out.printf("%.2f Executing call.%n", (System.nanoTime() - startNanos) / 1e9f);
+                        try (Response response = call.execute()) {
+                          System.out.printf("%.2f Call was expected to fail, but completed: %s%n",
+                              (System.nanoTime() - startNanos) / 1e9f, response);
+                        } catch (IOException e) {
+                          System.out.printf("%.2f Call failed as expected: %s%n",
+                              (System.nanoTime() - startNanos) / 1e9f, e);
+                        }
+                      }
 
 ### HttpLogInterceptor
 
